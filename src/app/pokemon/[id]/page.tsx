@@ -1,29 +1,45 @@
 "use client"
 
 import { useEffect, useState } from "react";
-import { fetchPokemonById } from "@/api/pokeApi";
-import { SinglePokemonData } from "@/types/pokemonTypes";
+import {fetchEvolutions, fetchPokemonById, fetchPokemonBySpecies, fetchPokemonEvolutionChain} from "@/api/pokeApi";
+import {SinglePokemonData} from "@/types/pokemonTypes";
 import { typeBackgrounds} from "@/utils/typeColors";
+import {getAllEvolutionsName} from "@/utils/evolution";
+import Link from "next/link";
 
 type Props = {
     params: { id: string };
 };
 
 export default function Pokemon({ params }: Props) {
-    const [pokemon, setPokemon] = useState<SinglePokemonData | null>(null);
 
-    const { id } = params;
+    const [pokemon, setPokemon] = useState<SinglePokemonData | null>(null);
+    const [evolutions, setEvolutions] = useState<SinglePokemonData[]>([])
+
+    const id = params.id;
 
     useEffect(() => {
-        const loadPokemonById = async () => {
+        const loadPokemon = async () => {
             try {
                 const pokemon = await fetchPokemonById(id);
                 setPokemon(pokemon);
-            } catch (error) {
-                console.log("Error al cargar Pokemon", error);
+
+                const pokemonSpecies = await fetchPokemonBySpecies(pokemon?.species.url);
+                if (!pokemonSpecies.evolution_chain.url) return;
+
+                const evolutionChain = await fetchPokemonEvolutionChain(pokemonSpecies?.evolution_chain.url)
+
+                const evolutionNames = getAllEvolutionsName(evolutionChain.chain);
+
+                const evolutionSprites = await fetchEvolutions(evolutionNames);
+                setEvolutions(evolutionSprites);
+
+            }
+            catch (error) {
+                console.log("Error cargando pokemon y/o chain", error);
             }
         };
-        loadPokemonById();
+        loadPokemon();
     }, [id]);
 
     const pokemonType = pokemon?.types[0].type.name;
@@ -31,15 +47,39 @@ export default function Pokemon({ params }: Props) {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-red-100 via-white to-red-200 flex items-center justify-center p-4">
-            <div className={`rounded-2xl border-4 border-black shadow-lg max-w-1/2 flex gap-8 p-4 ${typeBackgrounds[pokemonType]}`}>
+            <div className={`rounded-2xl border-4 border-black shadow-lg md:w-[50vw] flex gap-8 p-4 ${typeBackgrounds[pokemonType]}`}>
+                <div className="flex flex-col items-center divide-y divide-gray-300 flex-2">
 
-                {/* imagen */}
+                    {/* imagen */}
 
-                <img src={pokemon?.sprites.other["official-artwork"].front_default} alt={pokemon?.name} className="object-contain"/>
+                    <div className="flex justify-center w-full">
+                        <img
+                            src={pokemon?.sprites.other["official-artwork"].front_default}
+                            alt={pokemon?.name}
+                            className="object-contain max-h-[40vh] md:max-h-[60vh] w-auto"
+                        />
+                    </div>
+
+                    {/* linea evolutiva */}
+
+                    <div className="flex divide-x divide-gray-300 w-full mt-1">
+                        {evolutions.map(evolution => (
+                                <div key={evolution.name} className="flex-1 flex justify-center">
+                                    <Link href={`/pokemon/${evolution.name}`} className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform">
+                                        <img
+                                            src={evolution.sprites.other["official-artwork"].front_default}
+                                            alt={evolution.name}
+                                            className="object-contain max-h-[10vh] md:max-h-[20vh] w-auto"
+                                        />
+                                    </Link>
+                                </div>
+                            ))}
+                    </div>
+                </div>
 
                 {/* panel de datos */}
 
-                <div className="flex flex-col gap-4 border-2 border-gray-400 rounded-2xl bg-stone-100 p-4 shadow-inner flex-1 divide-y divide-gray-300">
+                <div className="flex flex-col gap-4 border-2 border-gray-400 rounded-2xl bg-stone-100 p-4 shadow-inner flex-1 w-full divide-y divide-gray-300">
 
                     {/* pokedex y nombre */}
 
@@ -63,6 +103,13 @@ export default function Pokemon({ params }: Props) {
                                 </li>
                             ))}
                         </ul>
+                    </div>
+
+                    {/* altura */}
+
+                    <div className="pb-3 flex justify-between">
+                        <h2 className="capitalize text-2xl font-semibold">Height:</h2>
+                        <p className="font-mono text-xl">{pokemon?.height}</p>
                     </div>
 
                     {/* peso */}

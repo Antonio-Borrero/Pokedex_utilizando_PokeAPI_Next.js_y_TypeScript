@@ -10,10 +10,13 @@ export const useInfinitePokemon = () => {
     const [hasNext, setHasNext] = useState<boolean>(true);
 
     const sentinel = useRef<HTMLDivElement | null>(null);
+    const loadingRef = useRef(false)
 
     const loadPokemons = useCallback(async () => {
 
-        if (loading || !hasNext) return;
+        if (loadingRef.current || !hasNext) return;
+
+        loadingRef.current = true;
         setLoading(true);
 
         try {
@@ -32,9 +35,10 @@ export const useInfinitePokemon = () => {
             console.log("Error al cargar los Pokemon", error);
         }
         finally {
+            loadingRef.current = false;
             setLoading(false);
         }
-    }, [url, hasNext, loading]);
+    }, [url, hasNext]);
 
     const infiniteScroll = useCallback(() => {
         const observer = new IntersectionObserver((entries) => {
