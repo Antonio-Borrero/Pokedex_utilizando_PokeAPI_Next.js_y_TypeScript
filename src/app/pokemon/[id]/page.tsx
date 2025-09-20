@@ -1,52 +1,35 @@
 "use client"
 
-import { useEffect, useState } from "react";
-import {fetchEvolutions, fetchPokemonById, fetchPokemonBySpecies, fetchPokemonEvolutionChain} from "@/api/pokeApi";
-import {SinglePokemonData} from "@/types/pokemonTypes";
+import { usePokemon } from "@/hooks/usePokemonDetails"
 import { typeBackgrounds} from "@/utils/typeColors";
-import {getAllEvolutionsName} from "@/utils/evolution";
 import Link from "next/link";
+import usePokemonNavigation from "@/hooks/usePokemonNavigation";
+import {ChevronLeft, ChevronRight} from "lucide-react";
 
 type Props = {
-    params: { id: string };
+    params: {id: string}
 };
 
-export default function Pokemon({ params }: Props) {
+export default function Pokemon ({params}: Props){
+    const { pokemon, evolutions } = usePokemon(params.id);
+    const { prevPokemon, nextPokemon } = usePokemonNavigation(pokemon?.id);
 
-    const [pokemon, setPokemon] = useState<SinglePokemonData | null>(null);
-    const [evolutions, setEvolutions] = useState<SinglePokemonData[]>([])
-
-    const id = params.id;
-
-    useEffect(() => {
-        const loadPokemon = async () => {
-            try {
-                const pokemon = await fetchPokemonById(id);
-                setPokemon(pokemon);
-
-                const pokemonSpecies = await fetchPokemonBySpecies(pokemon?.species.url);
-                if (!pokemonSpecies.evolution_chain.url) return;
-
-                const evolutionChain = await fetchPokemonEvolutionChain(pokemonSpecies?.evolution_chain.url)
-
-                const evolutionNames = getAllEvolutionsName(evolutionChain.chain);
-
-                const evolutionSprites = await fetchEvolutions(evolutionNames);
-                setEvolutions(evolutionSprites);
-
-            }
-            catch (error) {
-                console.log("Error cargando pokemon y/o chain", error);
-            }
-        };
-        loadPokemon();
-    }, [id]);
-
-    const pokemonType = pokemon?.types[0].type.name;
+    const pokemonType = pokemon?.types?.[0]?.type?.name || "normal";
     const pokemonStats = pokemon?.stats;
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-red-100 via-white to-red-200 flex items-center justify-center p-4">
+
+            {prevPokemon ? (
+                <Link href={`/pokemon/${prevPokemon?.name}`} className="p-2 hover:scale-105 transition-transform duration-200">
+                    <ChevronLeft size={200} />
+                </Link>
+            ) : (
+                <div style={{width: 200, height: 200}} />
+                )}
+
+            {/* tarjeta */}
+
             <div className={`rounded-2xl border-4 border-black shadow-lg md:w-[50vw] flex gap-8 p-4 ${typeBackgrounds[pokemonType]}`}>
                 <div className="flex flex-col items-center divide-y divide-gray-300 flex-2">
 
@@ -138,6 +121,14 @@ export default function Pokemon({ params }: Props) {
                     </div>
                 </div>
             </div>
+
+            {nextPokemon ? (
+                <Link href={`/pokemon/${nextPokemon?.name}`} className="p-2 hover:scale-105 transition-transform duration-200">
+                    <ChevronRight size={200} />
+                </Link>
+            ) : (
+                <div style={{width: 200, height: 200}} />
+            )}
         </div>
     );
 }
